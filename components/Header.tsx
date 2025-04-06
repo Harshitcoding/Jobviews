@@ -6,7 +6,7 @@ const Header = () => {
   const { data: session, status } = useSession()
 
   return (
-    <div className="flex justify-around items-center py-4">
+    <div className="flex justify-around items-center py-4 bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 ">
       <div className="text-4xl font-bold">
         JobViews
       </div>

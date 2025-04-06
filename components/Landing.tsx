@@ -1,13 +1,11 @@
 'use client'
 import Image from "next/image";
 import { Button } from "./ui/button";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 const Landing = () => {
-    const router = useRouter()
-    function handlebutton(){
-        return router.push('/dashboard')
-    }
+  
+ 
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-black">
@@ -56,9 +54,12 @@ const Landing = () => {
           </div>
           
           <div className="pt-4">
-            <Button onClick={handlebutton}className="relative overflow-hidden bg-gradient-to-r from-cyan-500 to-teal-500 text-white py-6 px-8 rounded-lg text-lg font-medium shadow-lg hover:shadow-cyan-500/20 transition-all duration-300 group">
+
+            <Link href='/Dashboard'>
+            <Button className="relative cursor-pointer overflow-hidden bg-gradient-to-r from-cyan-500 to-teal-500 text-white py-6 px-8 rounded-lg text-lg font-medium shadow-lg hover:shadow-cyan-500/20 transition-all duration-300 group">
               <span className="relative z-10">Activate AI Interview Mode</span>
             </Button>
+            </Link>
           </div>
         </div>
         
