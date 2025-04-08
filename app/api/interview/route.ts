@@ -1,59 +1,136 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { NextRequest, NextResponse } from 'next/server';
+// app/api/interview/route.js
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/utils/authOptions';
+import prisma from '@/app/utils/prisma';
+import { generateNextQuestion } from '@/app/utils/interviewUtils';
 
-// Initialize Gemini AI with the correct configuration
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '');
-
-export async function POST(request: NextRequest) {
-    if (!process.env.GOOGLE_AI_API_KEY) {
-        return NextResponse.json(
-            { error: 'API key not configured' },
-            { status: 500 }
-        );
-    }
-
+export async function POST(request: { json: () => Promise<any>; }) {
     try {
-        const { answer } = await request.json();
-
-        if (!answer) {
+        const session = await getServerSession(authOptions);
+        
+        if (!session?.user?.email) {
             return NextResponse.json(
-                { error: 'Answer is required' },
-                { status: 400 }
+                { error: 'Unauthorized' },
+                { status: 401 }
             );
         }
 
-        // Updated to use the correct model configuration
-        const model = genAI.getGenerativeModel({ 
-            model: 'gemini-1.5-pro',
-            generationConfig: {
-                temperature: 0.7,
-                topK: 40,
-                topP: 0.95,
-                maxOutputTokens: 1024,
-            }
+        // Get user
+        const user = await prisma.user.findUnique({
+            where: { email: session.user.email }
         });
 
-        const prompt = `
-            You're a professional technical interviewer conducting a software developer interview.
-            Based on this candidate's answer: "${answer}",
-            provide a relevant follow-up question that:
-            - Builds upon their previous response
-            - Tests their technical knowledge deeper
-            - Is specific and focused
-            Return only the follow-up question without any additional text.
-        `;
+        if (!user) {
+            return NextResponse.json(
+                { error: 'User not found' },
+                { status: 404 }
+            );
+        }
 
-        const result = await model.generateContent(prompt);
-        const response = result.response;
-        const nextQuestion = response.text();
-
-        return NextResponse.json({ question: nextQuestion });
+        const requestData = await request.json().catch(() => ({}));
+        
+        // If interviewId is provided, this is an answer submission
+        if (requestData.interviewId) {
+            return handleAnswerSubmission(requestData, user.id);
+        } 
+        // Otherwise, this is a new interview creation
+        else {
+            return createNewInterview(user.id);
+        }
 
     } catch (error) {
-        console.error('Interview API error:', error);
+        console.error('API error:', error);
         return NextResponse.json(
-            { error: String(error) },
+            { 
+                error: error instanceof Error ? error.message : 'API request failed',
+                details: error
+            },
             { status: 500 }
         );
     }
+}
+
+async function createNewInterview(userId: string) {
+    // Create interview linked to user
+    const interview = await prisma.interview.create({
+        data: {
+            userId: userId,
+            messages: {
+                create: {
+                    type: 'question',
+                    content: 'Tell me about your experience with software development.'
+                }
+            }
+        },
+        include: {
+            messages: true
+        }
+    });
+
+    // Return both interview ID and initial message
+    return NextResponse.json({
+        interviewId: interview.id,
+        messages: interview.messages
+    });
+}
+
+async function handleAnswerSubmission(data: { answer: any; interviewId: any; }, userId: string) {
+    const { answer, interviewId } = data;
+    
+    if (!answer || !interviewId) {
+        return NextResponse.json(
+            { error: 'Answer and interviewId are required' },
+            { status: 400 }
+        );
+    }
+
+    // Verify the interview belongs to the user
+    const interview = await prisma.interview.findUnique({
+        where: { 
+            id: interviewId,
+            userId: userId
+        },
+        include: {
+            messages: {
+                orderBy: {
+                    createdAt: 'asc'
+                }
+            }
+        }
+    });
+
+    if (!interview) {
+        return NextResponse.json(
+            { error: 'Interview not found' },
+            { status: 404 }
+        );
+    }
+
+    // Save the user's answer
+    await prisma.message.create({
+        data: {
+            type: 'answer',
+            content: answer,
+            interviewId: interviewId
+        }
+    });
+
+    // Generate next question based on conversation history
+    const nextQuestion = await generateNextQuestion(interview.messages, answer);
+    
+    // Save the new question
+    const newQuestionMessage = await prisma.message.create({
+        data: {
+            type: 'question',
+            content: nextQuestion,
+            interviewId: interviewId
+        }
+    });
+
+    // Return the new question
+    return NextResponse.json({
+        messageId: newQuestionMessage.id,
+        question: nextQuestion
+    });
 }
