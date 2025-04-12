@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import Link from 'next/link';
 
 type Message = {
   id: string;
@@ -141,7 +142,7 @@ function Page() {
     return (
         <div className='absolute w-full h-full bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 flex flex-col'>
             <div className="max-w-3xl w-full mx-auto p-6 flex flex-col h-full">
-                <h1 className="text-3xl font-bold mb-6 text-white">Technical Interview Simulator</h1>
+                <h1 className="text-3xl font-bold mb-6 text-center text-white">Technical Interview Simulator</h1>
                 
                 {error && (
                     <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -158,7 +159,7 @@ function Page() {
                         <button
                             onClick={startInterview}
                             disabled={isLoading}
-                            className="bg-blue-500 text-white px-6 py-3 rounded-md text-lg hover:bg-blue-600 disabled:bg-blue-300"
+                            className="bg-blue-500 cursor-pointer text-white px-6 py-3 rounded-md text-lg hover:bg-blue-600 disabled:bg-blue-300"
                         >
                             {isLoading ? 'Starting...' : 'Start New Interview'}
                         </button>
@@ -207,6 +208,11 @@ function Page() {
                             >
                                 {isLoading ? 'Sending...' : 'Send'}
                             </button>
+                                <Link href='/Dashboard'>
+                                <button type="submit"
+                               
+                                className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 disabled:bg-blue-300 h-fit self-end">End interview</button>
+                                </Link>
                         </form>
                     </>
                 )}
