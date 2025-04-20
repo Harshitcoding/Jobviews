@@ -24,7 +24,7 @@ export default function InterviewDetail({ params }: { params: { id: string } }) 
   useEffect(() => {
     const fetchInterview = async () => {
       try {
-        const response = await fetch(`/api/dashboard/${params.id}`);
+        const response = await fetch(`/api/Dashboard/${params.id}`);
         if (!response.ok) throw new Error('Failed to fetch interview');
         const data = await response.json();
         setInterview(data.interview);
